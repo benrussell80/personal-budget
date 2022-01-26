@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% load ledger_tags %}
+
+{% block title %}Account Activity - {{ account }}{% endblock title %}
+
+{% block content %}
+<h1>Account: {{ account }}</h1>
+<dl>
+    <dt>Kind</dt>
+    <dd>{{ account.get_kind_display }}</dd>
+
+    <dt>Opening Date</dt>
+    <dd>{{ account.opening_date|date:"SHORT_DATE_FORMAT" }}</dd>
+
+    <dt>Opening Balance</dt>
+    <dd>{{ account.opening_balance|as_currency }}</dd>
+
+    {% if account.parent %}
+    <dt>Parent Account</dt>
+    <dd><a href="{% url 'ledger:account_overview' pk=account.parent_id %}">{{ account.parent }}</a></dd>
+    {% endif %}
+
+    {% if account.children.count %}
+    <dt>Child Accounts</dt>
+    <dd>
+        <ul>
+            {% for child in account.children.all %}
+            <li><a href="{% url 'ledger:account_overview' pk=child.pk %}">{{ child }}</a></li>
+            {% endfor %}
+        </ul>
+    </dd>
+    {% endif %}
+
+    <dt>Current Balance</dt>
+    <dd>{{ account.balance|as_currency }}</dd>
+</dl>
+
+<h2>Activity</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Account</th>
+            <th>Date</th>
+            <th>Credit</th>
+            <th>Debit</th>
+            <th>Notes</th>
+            <th>Transaction</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in activity %}
+        <tr>
+            <td><a href="{% url 'ledger:account_overview' pk=row.account.pk %}">{{ row.account }}</a></td>
+            <td>{{ row.transaction__date|date:"SHORT_DATE_FORMAT" }}</td>
+            <td>{{ row.credit|as_currency }}</td>
+            <td>{{ row.debit|as_currency }}</td>
+            <td>{{ row.notes|default:"" }}</td>
+            <td><a href="{% url 'ledger:transaction_detail' pk=row.transaction_id %}">View Transaction</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock content %}

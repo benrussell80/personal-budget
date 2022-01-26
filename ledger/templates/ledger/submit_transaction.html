@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Submit a Transaction{% endblock title %}
+
+{% block content %}
+<h1>Submit a Transaction</h1>
+<form method="post">
+    {% csrf_token %}
+    <fieldset>
+        <legend>Transaction Information</legend>
+        {{ transaction_form.as_p }}
+    </fieldset>
+    <fieldset>
+        <legend>Details</legend>
+        {{ formset.management_form }}
+        <table>
+            <thead>
+                <tr>
+                    <th>Account</th>
+                    <th>Credit</th>
+                    <th>Debit</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for form in formset %}
+                <tr>
+                    {% for field in form %}
+                    <td>{{ field.errors }}{{ field }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </fieldset>
+    <input type="submit" value="Submit">
+</form>
+{% endblock content %}

@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% load ledger_tags %}
+
+{% block title %}Transaction Detail{% endblock title %}
+
+{% block content %}
+<h1>Transaction</h1>
+<dl>
+    <dt>Date</dt>
+    <dd>{{ transaction.date|date:"SHORT_DATE_FORMAT" }}</dd>
+    
+    <dt>Notes</dt>
+    <dd>{{ transaction.notes|default:"" }}</dd>
+
+</dl>
+
+<h2>Details</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Account</th>
+            <th>Credit</th>
+            <th>Debit</th>
+            <th>Notes</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for detail in transaction.details.all %}
+        <tr>
+            <td><a href="{% url 'ledger:account_overview' pk=detail.account_id %}">{{ detail.account }}</a></td>
+            <td>{{ detail.credit|as_currency }}</td>
+            <td>{{ detail.debit|as_currency }}</td>
+            <td>{{ detail.notes|default:"" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock content %}

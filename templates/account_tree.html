@@ -1,0 +1,12 @@
+{% load ledger_tags %}
+
+<ul>
+    {% for child in account.children.all %}
+    <li>
+        <a href="{% url 'ledger:account_overview' pk=child.pk %}">{{ child }}</a>: {{ child.balance|as_currency }}
+        {% if child.children.count %}
+        {% include 'account_tree.html' with account=child %}
+        {% endif %}
+    </li>
+    {% endfor %}
+</ul>
