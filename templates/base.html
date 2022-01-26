@@ -5,6 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{% endblock title %}</title>
+    {% block extrahead %}{% endblock extrahead %}
 </head>
 <body>
     {% if messages %}
@@ -22,6 +23,8 @@
         <li><a href="{% url 'ledger:create_quick_transaction' %}">Create Quick Transaction</a></li>
         <li><a href="{% url 'ledger:submit_quick_transaction' %}">Submit Quick Transaction</a></li>
         <li><a href="{% url 'ledger:create_account' %}">Create Account</a></li>
+        <li><a href="{% url 'ledger:analytics' %}">Analytics</a></li>
+        <li><a href="{% url 'admin:index' %}">Admin</a></li>
     </ul>
     {% block content %}
     {% endblock content %}

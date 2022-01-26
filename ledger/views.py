@@ -1,3 +1,14 @@
+from urllib.parse import urlencode
+from bokeh.resources import INLINE
+import calendar
+from django.db.models import QuerySet
+import datetime
+from bokeh.embed import components
+from bokeh.models import ColumnDataSource, FactorRange, Panel, Tabs, DataTable, TableColumn
+from bokeh.transform import factor_cmap
+from bokeh.palettes import Category20
+from bokeh.plotting import figure
+import pandas as pd
 from django.core.exceptions import ValidationError
 import traceback
 from django.shortcuts import render, redirect, get_object_or_404
@@ -5,7 +16,7 @@ from django.http import HttpRequest, HttpResponse
 from django.contrib import messages
 from django.urls import reverse
 from .models import Account, QuickTransaction, Transaction, Detail
-from .forms import CreateAccount, CreateQuickTransaction, SubmitQuickTransaction, TransactionDetailFormset, TransactionForm
+from .forms import CreateAccount, CreateQuickTransaction, ExpenseAnalyticsFilterForm, SubmitQuickTransaction, TransactionDetailFormset, TransactionForm
 from django.db import transaction as db_transaction
 from django.db import reset_queries, connection
 from django.utils.timezone import now
@@ -93,9 +104,105 @@ def create_account(request: HttpRequest) -> HttpResponse:
 
     return render(request, 'ledger/create_account.html', {'form': form})
 
-# view to see the general ledger (as a table)
+# view to see reports (balance sheet, income statement, statement of cash flows)
 # view other reports (income statement, balance sheet)
+
 # view graphs
+def expense_analytics(request: HttpRequest) -> HttpResponse:
+    accounts = request.GET.getlist('accounts', [])
+    start_month = request.GET.get('start_month')
+    end_month = request.GET.get('end_month')
+    try:
+        accounts = list(map(int, accounts))
+        if start_month is None or end_month is None:
+            raise ValueError('Must pass start_month and end_month.')
+        start_month = datetime.datetime.strptime(start_month, '%Y-%m')
+        end_month = datetime.datetime.strptime(end_month, '%Y-%m')
+        end_month = end_month.replace(day=calendar.monthrange(end_month.year, end_month.month)[1], minute=59, hour=23, second=59)
+    except:
+        messages.error(request, 'Invalid parameters received.')
+        return redirect(reverse('ledger:index'))
+
+    # plot amount paid for expenses grouped by month, kind
+    # DataFrame with columns [Account, Month, Amount]
+    accounts: QuerySet[Account] = Account.objects.filter(pk__in=accounts).iterator()
+    dfs = []
+    for acct in accounts:
+        details = acct.get_details().values_list('transaction__date', 'credit', 'debit')
+        df = pd.DataFrame(details, columns=['date', 'credit', 'debit'])
+        df['date'] = pd.to_datetime(df['date'])
+        df = df.loc[
+            (df['date']>=start_month)
+            &(df['date']<=end_month)
+        ]
+        match acct.kind:
+            case Account.AccountKind.ASSET:
+                df['amount'] = df['debit'] - df['credit']
+            case Account.AccountKind.LIABILITY | Account.AccountKind.EQUITY:
+                df['amount'] = df['credit'] - df['debit']
+        
+        df.drop(columns=['credit', 'debit'], inplace=True)
+        df['month'] = df['date'].apply(lambda value: value.strftime('%Y-%m'))
+        df = df.groupby(
+            'month',
+            as_index=False
+        ).agg(
+            amount=pd.NamedAgg(column='amount', aggfunc='sum')
+        )
+        df['account'] = str(acct)
+        dfs.append(df)
+
+    data: pd.DataFrame = pd.concat(dfs, ignore_index=True)
+    x = data.apply(lambda row: (row['account'], row['month']), axis=1).to_list()
+
+    x_range = FactorRange(*x)
+    months = data['month'].drop_duplicates().sort_values().to_list()
+    palette = Category20[max(len(months), 3)]
+
+    source = ColumnDataSource({
+        'x': x,
+        'amount': data['amount']
+    })
+
+    plot = figure(
+        x_range=x_range
+    )
+    plot.vbar(
+        x='x',
+        top='amount',
+        source=source,
+        line_color='white',
+        fill_color=factor_cmap('x', factors=months, palette=palette)
+    )
+    script, div = components(plot)
+    return render(request, 'ledger/expense_analytics.html', {'script': script, 'div': div, 'INLINE': INLINE.render()})
+
+
+def expense_analytics_filter(request: HttpRequest) -> HttpResponse:
+    if request.method == 'POST':
+        form = ExpenseAnalyticsFilterForm(request.POST)
+        if form.is_valid():
+            start_month = form.cleaned_data['start_month']
+            end_month = form.cleaned_data['end_month']
+            accounts = form.cleaned_data['accounts']
+            params = [
+                ('start_month', start_month.strftime('%Y-%m')),
+                ('end_month', end_month.strftime('%Y-%m')),
+                *[
+                    ('accounts', pk)
+                    for pk in accounts.values_list('pk', flat=True)
+                ]
+            ]
+            return redirect(reverse('ledger:expense_analytics') + '?' + urlencode(params))
+    else:
+        form = ExpenseAnalyticsFilterForm()
+
+    return render(request, 'ledger/expense_analytics_filter.html', {'form': form})
+
+
+def analytics(request: HttpRequest) -> HttpResponse:
+    return render(request, 'ledger/analytics.html')
+
 
 # view individual account activity
 def account_overview(request: HttpRequest, pk: int) -> HttpResponse:
@@ -128,9 +235,6 @@ def submit_transaction(request: HttpRequest) -> HttpResponse:
                 pass
             else:
                 return redirect(reverse('ledger:index'))
-        else:
-            print(transaction_form.errors)
-            print(formset.errors)
     else:
         transaction_form = TransactionForm()
         formset = TransactionDetailFormset()

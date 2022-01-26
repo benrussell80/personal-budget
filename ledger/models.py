@@ -28,10 +28,6 @@ class Account(models.Model):
     opening_date = models.DateField(auto_now_add=True)
 
     @property
-    def children(self) -> QuerySet['Account']:
-        return Account.objects.filter(parent=self)
-
-    @property
     def balance(self):
         match self.kind:
             case Account.AccountKind.ASSET:
@@ -73,6 +69,8 @@ class Transaction(models.Model):
         if asset - liability != equity:
             raise ValidationError('Detail lines do not balance (i.e., ASSETS - LIABILITIES != EQUITIES).')
 
+    def __str__(self) -> str:
+        return f'Transaction(date={self.date}, details={self.details.count()}, notes={(self.notes or "")[:20]}...)'
 
 class Detail(models.Model):
     transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, related_name='details')

@@ -54,9 +54,6 @@ class TransactionForm(forms.ModelForm):
             'date': forms.DateInput(attrs={'type': 'date'})
         }
 
-# transaction header
-# detail lines
-
 
 class CreateAccount(forms.ModelForm):
     class Meta:
@@ -66,3 +63,10 @@ class CreateAccount(forms.ModelForm):
             'key': forms.TextInput(),
             'description': forms.TextInput()
         }
+
+
+class ExpenseAnalyticsFilterForm(forms.Form):
+    start_month = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
+    end_month = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
+    accounts = forms.ModelMultipleChoiceField(Account.objects)
+    
