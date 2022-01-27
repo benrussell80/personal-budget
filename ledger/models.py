@@ -66,15 +66,19 @@ class Account(models.Model):
         )
 
     def get_all_opening_balance_details(self) -> list[OpeningBalanceDetail]:
-        records = [
-            OpeningBalanceDetail(
-                account=self,
-                credit=0 if self.kind == Account.AccountKind.ASSET else self.opening_balance,
-                debit=0 if self.kind != Account.AccountKind.ASSET else self.opening_balance,
-                date=self.opening_date,
-                notes='Opening Balance'
-            )
-        ]
+        if self.opening_balance != 0:
+            records = [
+                OpeningBalanceDetail(
+                    account=self,
+                    credit=0 if self.kind == Account.AccountKind.ASSET else self.opening_balance,
+                    debit=0 if self.kind != Account.AccountKind.ASSET else self.opening_balance,
+                    date=self.opening_date,
+                    notes='Opening Balance'
+                )
+            ]
+        else:
+            records = []
+        
         for child in self.children.iterator():
             records.extend(child.get_all_opening_balance_details())
 
