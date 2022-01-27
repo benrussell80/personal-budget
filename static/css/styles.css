@@ -9,3 +9,19 @@ table#AccountOverview td:nth-child(6n+3), table#AccountOverview td:nth-child(6n+
 table.banded tr:nth-child(2n+1) {
     background: rgb(220, 220, 220);
 }
+
+.messages .success {
+    background: green;
+    color: white;
+}
+
+.messages .error {
+    background: red;
+    color: white;
+}
+
+.messages {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
