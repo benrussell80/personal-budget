@@ -95,7 +95,7 @@ class Transaction(models.Model):
     def clean(self) -> None:
         asset = self.details.filter(account__kind=Account.AccountKind.ASSET).aggregate(total=models.Sum(models.F('debit') - models.F('credit')))['total'] or 0
         liability = self.details.filter(account__kind=Account.AccountKind.LIABILITY).aggregate(total=models.Sum(models.F('credit') - models.F('debit')))['total'] or 0
-        equity = self.details.filter(account__kind=Account.AccountKind.EQUITY).aggregate(total=models.Sum(models.F('debit') - models.F('credit')))['total'] or 0
+        equity = self.details.filter(account__kind=Account.AccountKind.EQUITY).aggregate(total=models.Sum(models.F('credit') - models.F('debit')))['total'] or 0
         if asset - liability != equity:
             raise ValidationError('Detail lines do not balance (i.e., ASSETS - LIABILITIES != EQUITIES).')
 

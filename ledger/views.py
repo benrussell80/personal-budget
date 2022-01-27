@@ -78,6 +78,9 @@ def submit_quick_transaction(request: HttpRequest) -> HttpResponse:
                     transaction.save()
                     from_detail.save()
                     to_detail.save()
+                    transaction.full_clean()
+                    from_detail.full_clean()
+                    to_detail.full_clean()
             except Exception as e:
                 messages.error(request, 'Unable to submit quick transaction.')
             else:
@@ -249,8 +252,9 @@ def submit_transaction(request: HttpRequest) -> HttpResponse:
                         transaction_form.add_error(None, e)
                         raise
             except:
-                pass
+                messages.error(request, 'Unable to save transaction.')
             else:
+                messages.success(request, 'Successfully posted transaction.')
                 return redirect(reverse('ledger:index'))
     else:
         transaction_form = TransactionForm()
