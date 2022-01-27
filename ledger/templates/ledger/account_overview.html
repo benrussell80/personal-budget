@@ -49,10 +49,23 @@
         </tr>
     </thead>
     <tbody>
+        <tr>
+            <td><a href="{% url 'ledger:account_overview' pk=account.pk %}">{{ account }}</a></td>
+            <td>{{ account.opening_date|date:"SHORT_DATE_FORMAT" }}</td>
+            {% if account.kind == 1 %}
+            <td>{{ 0|as_currency }}</td>
+            <td>{{ account.opening_balance|as_currency }}</td>
+            {% else %}
+            <td>{{ account.opening_balance|as_currency }}</td>
+            <td>{{ 0|as_currency }}</td>
+            {% endif %}
+            <td>Opening Balance</td>
+            <td></td>
+        </tr>
         {% for row in activity %}
         <tr>
             <td><a href="{% url 'ledger:account_overview' pk=row.account.pk %}">{{ row.account }}</a></td>
-            <td>{{ row.transaction__date|date:"SHORT_DATE_FORMAT" }}</td>
+            <td>{{ row.transaction.date|date:"SHORT_DATE_FORMAT" }}</td>
             <td>{{ row.credit|as_currency }}</td>
             <td>{{ row.debit|as_currency }}</td>
             <td>{{ row.notes|default:"" }}</td>
@@ -60,5 +73,16 @@
         </tr>
         {% endfor %}
     </tbody>
+    <tfoot>
+        <tr>
+            {% if account.kind == 1 %}
+            <th colspan="3">Balance</th>
+            <td colspan="3">{{ account.balance|as_currency }}</td>
+            {% else %}
+            <th colspan="2">Balance</th>
+            <td colspan="4">{{ account.balance|as_currency }}</td>
+            {% endif %}
+        </tr>
+    </tfoot>
 </table>
 {% endblock content %}

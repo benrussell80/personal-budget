@@ -52,10 +52,11 @@ def submit_quick_transaction(request: HttpRequest) -> HttpResponse:
             try:
                 with db_transaction.atomic():
                     quick_transaction: QuickTransaction = form.cleaned_data['quick_transaction']
+                    notes = form.cleaned_data.get('notes')
 
                     transaction = Transaction(
                         date=form.cleaned_data['date'],
-                        notes=form.cleaned_data.get('notes')
+                        notes=notes
                     )
 
                     from_detail = Detail(
@@ -63,6 +64,7 @@ def submit_quick_transaction(request: HttpRequest) -> HttpResponse:
                         account=quick_transaction.account_from,
                         credit=0 if quick_transaction.account_from_charge_kind == QuickTransaction.ChargeKind.DEBIT else form.cleaned_data['amount'],
                         debit=0 if quick_transaction.account_from_charge_kind == QuickTransaction.ChargeKind.CREDIT else form.cleaned_data['amount'],
+                        notes=notes,
                     )
 
                     to_detail = Detail(
@@ -70,13 +72,13 @@ def submit_quick_transaction(request: HttpRequest) -> HttpResponse:
                         account=quick_transaction.account_to,
                         credit=0 if quick_transaction.account_to_charge_kind == QuickTransaction.ChargeKind.DEBIT else form.cleaned_data['amount'],
                         debit=0 if quick_transaction.account_to_charge_kind == QuickTransaction.ChargeKind.CREDIT else form.cleaned_data['amount'],
+                        notes=notes,
                     )
 
                     transaction.save()
                     from_detail.save()
                     to_detail.save()
             except Exception as e:
-                print(traceback.format_exc())
                 messages.error(request, 'Unable to submit quick transaction.')
             else:
                 messages.success(request, 'Successfully created quick transaction.')
