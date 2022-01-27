@@ -1,9 +1,20 @@
+from typing import TypedDict
 from django.db import models
 from django.db.models import QuerySet
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
+from numbers import Number
+import datetime
 
 # Create your models here.
+class OpeningBalanceDetail(TypedDict):
+    account: 'Account'
+    credit: Number
+    debit: Number
+    date: datetime.date
+    notes: str | None
+
+
 class Account(models.Model):
     class AccountKind(models.IntegerChoices):
         # ASSET - LIABILITY = EQUITY
@@ -53,6 +64,21 @@ class Account(models.Model):
         return Detail.objects.filter(account=self).union(
             *[account.get_details() for account in self.children.all()]
         )
+
+    def get_all_opening_balance_details(self) -> list[OpeningBalanceDetail]:
+        records = [
+            OpeningBalanceDetail(
+                account=self,
+                credit=0 if self.kind == Account.AccountKind.ASSET else self.opening_balance,
+                debit=0 if self.kind != Account.AccountKind.ASSET else self.opening_balance,
+                date=self.opening_date,
+                notes='Opening Balance'
+            )
+        ]
+        for child in self.children.iterator():
+            records.extend(child.get_all_opening_balance_details())
+
+        return records
 
     class Meta:
         ordering = ['key']

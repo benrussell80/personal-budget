@@ -210,7 +210,22 @@ def analytics(request: HttpRequest) -> HttpResponse:
 def account_overview(request: HttpRequest, pk: int) -> HttpResponse:
     account = get_object_or_404(Account, pk=pk)
     details = account.get_details()
-    return render(request, 'ledger/account_overview.html', {'account': account, 'activity': details})
+    activity = [
+        {
+            'account': detail.account,
+            'credit': detail.credit,
+            'debit': detail.debit,
+            'notes': detail.notes,
+            'transaction': {
+                'pk': detail.transaction_id,
+                'date': detail.transaction.date
+            }
+        }
+        for detail in details
+    ]
+    activity.extend(account.get_all_opening_balance_details())
+    activity.sort(key=lambda record: record.get('date', record.get('transaction', {}).get('date')))
+    return render(request, 'ledger/account_overview.html', {'account': account, 'activity': activity})
 
 # view transaction detail
 def transaction_detail(request: HttpRequest, pk: int) -> HttpResponse:
