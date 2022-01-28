@@ -1,18 +1,13 @@
-from typing import TypedDict
+from typing import Any
 from django.db import models
 from django.db.models import QuerySet
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
-from numbers import Number
-import datetime
 
 # Create your models here.
-class OpeningBalanceDetail(TypedDict):
-    account: 'Account'
-    credit: Number
-    debit: Number
-    date: datetime.date
-    notes: str | None
+class AccountModelManager(models.Manager):
+    def get_queryset(self) -> QuerySet['Account']:
+        return super().get_queryset().prefetch_related('children', 'transaction_details')
 
 
 class Account(models.Model):
@@ -35,8 +30,8 @@ class Account(models.Model):
     key = models.TextField(unique=True)
     description = models.TextField()
     kind = models.SmallIntegerField(choices=AccountKind.choices)
-    opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     opening_date = models.DateField(auto_now_add=True)
+    is_leaf = models.BooleanField(default=False)
 
     @property
     def balance(self):
@@ -47,11 +42,13 @@ class Account(models.Model):
                 total_expression = models.Sum(models.F('credit') - models.F('debit'))
         
         return (
-            Detail.objects.filter(account=self).aggregate(balance=total_expression)['balance'] or 0
-        ) + self.opening_balance + sum([
+            self.transaction_details.aggregate(balance=total_expression)['balance'] or 0
+        ) + sum([
             child.balance
             for child in self.children.iterator()
         ])
+
+    objects = AccountModelManager()
 
     def __str__(self) -> str:
         return f'{self.key} - {self.description}'
@@ -65,19 +62,8 @@ class Account(models.Model):
             *[account.get_details() for account in self.children.all()]
         )
 
-    def get_all_opening_balance_details(self) -> list[OpeningBalanceDetail]:
-        if self.opening_balance != 0:
-            records = [
-                OpeningBalanceDetail(
-                    account=self,
-                    credit=0 if self.kind == Account.AccountKind.ASSET else self.opening_balance,
-                    debit=0 if self.kind != Account.AccountKind.ASSET else self.opening_balance,
-                    date=self.opening_date,
-                    notes='Opening Balance'
-                )
-            ]
-        else:
-            records = []
+    def get_all_opening_balance_details(self) -> list[dict[str, Any]]:
+        records = []
         
         for child in self.children.iterator():
             records.extend(child.get_all_opening_balance_details())
@@ -97,10 +83,16 @@ class Transaction(models.Model):
         liability = self.details.filter(account__kind=Account.AccountKind.LIABILITY).aggregate(total=models.Sum(models.F('credit') - models.F('debit')))['total'] or 0
         equity = self.details.filter(account__kind=Account.AccountKind.EQUITY).aggregate(total=models.Sum(models.F('credit') - models.F('debit')))['total'] or 0
         if asset - liability != equity:
-            raise ValidationError('Detail lines do not balance (i.e., ASSETS - LIABILITIES != EQUITIES).')
+            raise ValidationError(f'Detail lines do not balance (i.e., ASSETS({asset}) - LIABILITIES({liability}) != EQUITIES({equity})).')
 
     def __str__(self) -> str:
         return f'Transaction(date={self.date}, details={self.details.count()}, notes={(self.notes or "")[:20]}...)'
+
+
+class DetailManager(models.Manager):
+    def get_queryset(self) -> QuerySet['Detail']:
+        return super().get_queryset().select_related('transaction')
+
 
 class Detail(models.Model):
     transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, related_name='details')
@@ -113,6 +105,7 @@ class Detail(models.Model):
         if self.credit != 0 and self.debit != 0:
             raise ValidationError('Detail must be credit or debit; not both.')
 
+    objects = DetailManager()
 
 class UserDefinedAttribute(models.Model):
     class AttributeKind(models.IntegerChoices):

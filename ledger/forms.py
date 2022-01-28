@@ -64,9 +64,17 @@ class CreateAccount(forms.ModelForm):
             'description': forms.TextInput()
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['parent'].queryset = Account.objects.filter(is_leaf=False)
+
+
+class MonthField(forms.DateField):
+    widget = forms.DateInput(attrs={'type': 'month'})
+    input_formats = ['%Y-%m', '%m/%Y']
+
 
 class ExpenseAnalyticsFilterForm(forms.Form):
-    start_month = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
-    end_month = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
+    start_month = MonthField()
+    end_month = MonthField()
     accounts = forms.ModelMultipleChoiceField(Account.objects)
-    

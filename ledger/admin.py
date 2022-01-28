@@ -10,7 +10,12 @@ class DetailInline(admin.TabularInline):
 class TransactionAdmin(admin.ModelAdmin):
     inlines = [DetailInline]
 
-admin.site.register(models.Account)
+
+@admin.register(models.Account)
+class AccountAdmin(admin.ModelAdmin):
+    list_display = ['__str__', 'is_leaf']
+
+
 admin.site.register(models.Detail)
 admin.site.register(models.UserDefinedAttribute)
 admin.site.register(models.UserDefinedAttributeDetailThrough)

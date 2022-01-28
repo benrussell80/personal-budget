@@ -13,9 +13,6 @@
     <dt>Opening Date</dt>
     <dd>{{ account.opening_date|date:"SHORT_DATE_FORMAT" }}</dd>
 
-    <dt>Opening Balance</dt>
-    <dd>{{ account.opening_balance|as_currency }}</dd>
-
     {% if account.parent %}
     <dt>Parent Account</dt>
     <dd><a href="{% url 'ledger:account_overview' pk=account.parent_id %}">{{ account.parent }}</a></dd>

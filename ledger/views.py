@@ -1,29 +1,34 @@
-from urllib.parse import urlencode
-from bokeh.resources import INLINE
 import calendar
-from django.db.models import QuerySet
 import datetime
+from urllib.parse import urlencode
+
+import pandas as pd
 from bokeh.embed import components
-from bokeh.models import ColumnDataSource, FactorRange, Panel, Tabs, DataTable, TableColumn
-from bokeh.transform import factor_cmap
+from bokeh.models import (ColumnDataSource, DataTable, FactorRange, Panel,
+                          TableColumn, Tabs)
 from bokeh.palettes import Category20
 from bokeh.plotting import figure
-import pandas as pd
-from django.core.exceptions import ValidationError
-import traceback
-from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpRequest, HttpResponse
+from bokeh.resources import INLINE
+from bokeh.transform import factor_cmap
 from django.contrib import messages
-from django.urls import reverse
-from .models import Account, QuickTransaction, Transaction, Detail
-from .forms import CreateAccount, CreateQuickTransaction, ExpenseAnalyticsFilterForm, SubmitQuickTransaction, TransactionDetailFormset, TransactionForm
+from django.core.exceptions import ValidationError
+from django.db import connection, reset_queries
 from django.db import transaction as db_transaction
-from django.db import reset_queries, connection
+from django.db.models import QuerySet
+from django.http import HttpRequest, HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils.timezone import now
+
+from .forms import (CreateAccount, CreateQuickTransaction,
+                    ExpenseAnalyticsFilterForm, SubmitQuickTransaction,
+                    TransactionDetailFormset, TransactionForm)
+from .models import Account, Detail, QuickTransaction, Transaction
+
 
 # Create your views here.
 def index(request: HttpRequest):
-    root_accounts = Account.objects.filter(parent=None).prefetch_related('children')
+    root_accounts = Account.objects.filter(parent=None)  # .prefetch_related('children')
     return render(request, 'ledger/index.html', {'root_accounts': root_accounts})
 
 
@@ -158,6 +163,10 @@ def expense_analytics(request: HttpRequest) -> HttpResponse:
         dfs.append(df)
 
     data: pd.DataFrame = pd.concat(dfs, ignore_index=True)
+    if data.size == 0:
+        messages.warning(request, 'No data found.')
+        return redirect(reverse('ledger:expense_analytics_filter'))
+    
     x = data.apply(lambda row: (row['account'], row['month']), axis=1).to_list()
 
     x_range = FactorRange(*x)
@@ -250,8 +259,9 @@ def submit_transaction(request: HttpRequest) -> HttpResponse:
                         transaction.full_clean()
                     except ValidationError as e:
                         transaction_form.add_error(None, e)
+                        print(e)
                         raise
-            except:
+            except Exception as e:
                 messages.error(request, 'Unable to save transaction.')
             else:
                 messages.success(request, 'Successfully posted transaction.')
