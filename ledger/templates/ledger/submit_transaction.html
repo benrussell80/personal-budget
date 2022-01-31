@@ -32,8 +32,13 @@
                 {% for form in formset %}
                 <tr>
                     {% for field in form %}
+                    {% if field.name != 'DELETE' %}
                     <td>{{ field.errors }}{{ field }}</td>
+                    {% else %}
+                    <td>{{ field.as_hidden }}</td>
+                    {% endif %}
                     {% endfor %}
+                    <td><button class="delete-row-btn" type="button" onclick="deleteDetailTableRow(this)">&times;</button></td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Any
 from django.db import models
 from django.db.models import QuerySet
@@ -79,11 +80,20 @@ class Transaction(models.Model):
     notes = models.TextField(null=True, blank=True)
 
     def clean(self) -> None:
-        asset = self.details.filter(account__kind=Account.AccountKind.ASSET).aggregate(total=models.Sum(models.F('debit') - models.F('credit')))['total'] or 0
-        liability = self.details.filter(account__kind=Account.AccountKind.LIABILITY).aggregate(total=models.Sum(models.F('credit') - models.F('debit')))['total'] or 0
-        equity = self.details.filter(account__kind=Account.AccountKind.EQUITY).aggregate(total=models.Sum(models.F('credit') - models.F('debit')))['total'] or 0
-        if asset - liability != equity:
-            raise ValidationError(f'Detail lines do not balance (i.e., ASSETS({asset}) - LIABILITIES({liability}) != EQUITIES({equity})).')
+        assets = Decimal(0)
+        liabilities = Decimal(0)
+        equities = Decimal(0)
+        for detail in self.details.iterator():
+            match detail.account.kind:
+                case Account.AccountKind.ASSET:
+                    assets += detail.debit - detail.credit
+                case Account.AccountKind.LIABILITY:
+                    liabilities += detail.credit - detail.debit
+                case Account.AccountKind.EQUITY:
+                    equities += detail.credit - detail.debit
+        
+        if assets - liabilities != equities:
+            raise ValidationError(f'Detail lines do not balance (i.e., ASSETS({assets}) - LIABILITIES({liabilities}) != EQUITIES({equities})).')
 
     def __str__(self) -> str:
         return f'Transaction(date={self.date}, details={self.details.count()}, notes={(self.notes or "")[:20]}...)'
@@ -174,4 +184,7 @@ class QuickTransaction(models.Model):
 class RecurringTransaction(models.Model):
     transaction = models.ForeignKey(Transaction, models.CASCADE, related_name='recurring_setups')
     name = models.TextField()
+
+    def __str__(self) -> str:
+        return self.name
     

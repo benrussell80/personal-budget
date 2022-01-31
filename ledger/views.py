@@ -262,14 +262,13 @@ def submit_transaction(request: HttpRequest) -> HttpResponse:
         if transaction_form.is_valid() and formset.is_valid():
             try:
                 with db_transaction.atomic():
-                    transaction = transaction_form.save()
+                    transaction: Transaction = transaction_form.save()
                     formset.instance = transaction
                     formset.save()
                     try:
                         transaction.full_clean()
                     except ValidationError as e:
                         transaction_form.add_error(None, e)
-                        print(e)
                         raise
             except Exception as e:
                 messages.error(request, 'Unable to save transaction.')

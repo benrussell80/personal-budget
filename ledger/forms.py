@@ -41,7 +41,7 @@ TransactionDetailFormset = forms.inlineformset_factory(
     form=DetailForm,
     extra=10,
     exclude=[],
-    can_delete=False,
+    can_delete=True,
     min_num=2,
 )
 

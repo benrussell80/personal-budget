@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
 
+{% block title %}Recurring Transactions{% endblock title %}
+
 {% block content %}
 <h1>Recurring Transactions</h1>
 <table class="banded">
@@ -12,7 +14,7 @@
     <tbody>
         {% for rec in recs %}
         <tr>
-            <td>{{ rec.name }}</td>
+            <td>{{ rec }}</td>
             <td><a href="{% url 'ledger:submit_transaction' %}?rec_trans_pk={{ rec.pk }}">Prepare Transaction</a></td>
         </tr>
         {% endfor %}

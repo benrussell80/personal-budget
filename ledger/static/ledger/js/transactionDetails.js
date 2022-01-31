@@ -33,12 +33,45 @@ const addRowToDetailTable = () => {
             }
         }
     }
+    row.querySelectorAll('.errorlist').forEach(elem => elem.remove());
+
     let tableBody = document.querySelector(LAST_DETAIL_ROW_SELECTOR).parentElement;
     tableBody.appendChild(row);
 
+    incrementTotalFormAmount();
+    checkDeleteButtonDisabledStatus();
+}
+
+/**
+ * Delete a row from the detail table.
+ * @param {HTMLButtonElement} deleteButton 
+ */
+const deleteDetailTableRow = (deleteButton) => {
+    let td = deleteButton.parentElement;
+    let tr = td.parentElement;
+    tr.remove();
+    decrementTotalFormAmount();
+    checkDeleteButtonDisabledStatus();
+}
+
+const checkDeleteButtonDisabledStatus = () => {
+    let buttons = document.querySelectorAll('.delete-row-btn');
+    let disable = buttons.length <= 1;
+    if (disable) {
+        buttons.forEach(elem => elem.setAttribute('disabled', ''))
+    } else {
+        buttons.forEach(elem => elem.removeAttribute('disabled'));
+    }
+
+}
+
+const changeTotalFormAmount = (value) => {
     let totalFormsInput = document.querySelector(TOTAL_FORMS_SELECTOR);
     if (!totalFormsInput) return
-    let numForms = parseInt(totalFormsInput.value) + 1;
+    let numForms = parseInt(totalFormsInput.value) + value;
     totalFormsInput.value = numForms;
 }
 
+const incrementTotalFormAmount = () => changeTotalFormAmount(1);
+
+const decrementTotalFormAmount = () => changeTotalFormAmount(-1);
