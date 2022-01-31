@@ -1,6 +1,12 @@
 {% extends 'base.html' %}
 
+{% load static %}
+
 {% block title %}Submit a Transaction{% endblock title %}
+
+{% block extrahead %}
+<script src="{% static 'ledger/js/transactionDetails.js' %}"></script>
+{% endblock extrahead %}
 
 {% block content %}
 <h1>Submit a Transaction</h1>
@@ -32,6 +38,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        <button type="button" onclick="addRowToDetailTable()" id="AddRowButton">Add Row</button>
     </fieldset>
     <input type="submit" value="Submit">
 </form>

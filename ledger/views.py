@@ -20,10 +20,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.timezone import now
 
-from .forms import (CreateAccount, CreateQuickTransaction,
+from .forms import (CreateAccount, CreateQuickTransaction, CreateRecurringTransaction,
                     ExpenseAnalyticsFilterForm, SubmitQuickTransaction,
                     TransactionDetailFormset, TransactionForm)
-from .models import Account, Detail, QuickTransaction, Transaction
+from .models import Account, Detail, QuickTransaction, RecurringTransaction, Transaction
 
 
 # Create your views here.
@@ -246,6 +246,16 @@ def transaction_detail(request: HttpRequest, pk: int) -> HttpResponse:
 
 # view to submit a transaction
 def submit_transaction(request: HttpRequest) -> HttpResponse:
+    rec_trans_pk = request.GET.get('rec_trans_pk', None)
+    rec_trans: RecurringTransaction | None
+    if rec_trans_pk is not None:
+        try:
+            rec_trans = RecurringTransaction.objects.get(pk=int(rec_trans_pk))
+        except:
+            rec_trans = None
+    else:
+        rec_trans = None
+
     if request.method == 'POST':
         transaction_form = TransactionForm(request.POST)
         formset = TransactionDetailFormset(request.POST)
@@ -267,7 +277,46 @@ def submit_transaction(request: HttpRequest) -> HttpResponse:
                 messages.success(request, 'Successfully posted transaction.')
                 return redirect(reverse('ledger:index'))
     else:
-        transaction_form = TransactionForm()
-        formset = TransactionDetailFormset()
+        if rec_trans is not None:
+            transaction_form = TransactionForm(initial={
+                'notes': rec_trans.transaction.notes
+            })
+            formset = TransactionDetailFormset(initial=[
+                {
+                    'debit': detail.debit,
+                    'credit': detail.credit,
+                    'account': detail.account,
+                    'notes': detail.notes
+                }
+                for detail in rec_trans.transaction.details.iterator()
+            ])
+            formset.extra = min(formset.extra, rec_trans.transaction.details.count() - formset.min_num)
+        else:
+            transaction_form = TransactionForm()
+            formset = TransactionDetailFormset()
     
     return render(request, 'ledger/submit_transaction.html', {'transaction_form': transaction_form, 'formset': formset})
+
+
+def create_rec_trans(request: HttpRequest, pk: int) -> HttpResponse:
+    transaction = get_object_or_404(Transaction.objects.prefetch_related('details'), pk=pk)
+    if request.method == 'POST':
+        form = CreateRecurringTransaction(request.POST)
+        if form.is_valid():
+            form.instance.transaction = transaction
+            try:
+                form.save()
+            except Exception as e:
+                messages.error(request, f'Unable to create recurring transaction: {e.__class__.__name__}{str(e)}')
+            else:
+                messages.success(request, 'Successfully created recurring transaction.')
+                return redirect(reverse('ledger:index'))
+    else:
+        form = CreateRecurringTransaction()
+    
+    return render(request, 'ledger/create_rec_trans.html', {'form': form, 'transaction': transaction})
+
+
+def list_rec_trans(request: HttpRequest) -> HttpResponse:
+    recs = RecurringTransaction.objects.all()
+    return render(request, 'ledger/list_rec_trans.html', {'recs': recs})

@@ -169,3 +169,9 @@ class QuickTransaction(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+
+class RecurringTransaction(models.Model):
+    transaction = models.ForeignKey(Transaction, models.CASCADE, related_name='recurring_setups')
+    name = models.TextField()
+    

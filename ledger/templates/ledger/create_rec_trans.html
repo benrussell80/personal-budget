@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Create Recurring Transaction</h1>
+<table class="banded">
+    <caption>Transaction Details</caption>
+    <thead>
+        <tr>
+            <th>Account</th>
+            <th>Credit</th>
+            <th>Debit</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for detail in transaction.details.all %}
+        <tr>
+            <td>{{ detail.account }}</td>
+            <td>{{ detail.credit }}</td>
+            <td>{{ detail.debit }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% include 'form.html' %}
+{% endblock content %}

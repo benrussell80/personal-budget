@@ -15,8 +15,10 @@
 
 </dl>
 
+<a href="{% url 'ledger:create_rec_trans' pk=transaction.pk %}">Save as Recurring Transaction</a>
+
 <h2>Details</h2>
-<table>
+<table class="banded">
     <thead>
         <tr>
             <th>Account</th>
@@ -36,5 +38,4 @@
         {% endfor %}
     </tbody>
 </table>
-
 {% endblock content %}

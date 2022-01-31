@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Detail, QuickTransaction, Account, Transaction
+from .models import Detail, QuickTransaction, Account, RecurringTransaction, Transaction
 
 # form to create a quick transaction
 class CreateQuickTransaction(forms.ModelForm):
@@ -78,3 +78,12 @@ class ExpenseAnalyticsFilterForm(forms.Form):
     start_month = MonthField()
     end_month = MonthField()
     accounts = forms.ModelMultipleChoiceField(Account.objects)
+
+
+class CreateRecurringTransaction(forms.ModelForm):
+    class Meta:
+        model = RecurringTransaction
+        fields = ['name']
+        widgets = {
+            'name': forms.TextInput()
+        }
