@@ -75,3 +75,26 @@ const changeTotalFormAmount = (value) => {
 const incrementTotalFormAmount = () => changeTotalFormAmount(1);
 
 const decrementTotalFormAmount = () => changeTotalFormAmount(-1);
+
+const calculateDebitsAndCredits = () => {
+    let debits = ([...document.querySelectorAll('input[name^="details-"][name$="-debit"]')])
+        .map(elem => elem.valueAsNumber || 0).reduce((acc, cur) => acc + cur, 0);
+    let credits = ([...document.querySelectorAll('input[name^="details-"][name$="-credit"]')])
+        .map(elem => elem.valueAsNumber || 0).reduce((acc, cur) => acc + cur, 0);
+    return [debits, credits]
+};
+
+const updateTableTotals = () => {
+    let debitTotal = document.querySelector('#DebitTotal');
+    let creditTotal = document.querySelector('#CreditTotal');
+    let [debits, credits] = calculateDebitsAndCredits();
+    debitTotal.textContent = debits.toFixed(2).toString();
+    creditTotal.textContent = credits.toFixed(2).toString();
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    updateTableTotals();
+    document.querySelectorAll('input[name^="details-"][name$="-debit"], input[name^="details-"][name$="-credit"]').forEach(
+        elem => elem.addEventListener('change', () => updateTableTotals())
+    )
+})
