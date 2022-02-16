@@ -1,0 +1,269 @@
+[
+    {
+        "model": "ledger.account",
+        "pk": 1,
+        "fields": {
+            "parent": null,
+            "key": "10000",
+            "description": "Assets",
+            "kind": 1,
+            "opening_date": "2022-02-16",
+            "is_leaf": false
+        }
+    },
+    {
+        "model": "ledger.account",
+        "pk": 2,
+        "fields": {
+            "parent": null,
+            "key": "20000",
+            "description": "Liabilities",
+            "kind": 2,
+            "opening_date": "2022-02-16",
+            "is_leaf": false
+        }
+    },
+    {
+        "model": "ledger.account",
+        "pk": 3,
+        "fields": {
+            "parent": null,
+            "key": "30000",
+            "description": "Equities",
+            "kind": 3,
+            "opening_date": "2022-02-16",
+            "is_leaf": false
+        }
+    },
+    {
+        "model": "ledger.account",
+        "pk": 4,
+        "fields": {
+            "parent": 1,
+            "key": "11000",
+            "description": "Cash",
+            "kind": 1,
+            "opening_date": "2022-02-16",
+            "is_leaf": true
+        }
+    },
+    {
+        "model": "ledger.account",
+        "pk": 5,
+        "fields": {
+            "parent": 3,
+            "key": "31000",
+            "description": "Income",
+            "kind": 3,
+            "opening_date": "2022-02-16",
+            "is_leaf": true
+        }
+    },
+    {
+        "model": "ledger.account",
+        "pk": 6,
+        "fields": {
+            "parent": 3,
+            "key": "32000",
+            "description": "Expenses",
+            "kind": 3,
+            "opening_date": "2022-02-16",
+            "is_leaf": true
+        }
+    },
+    {
+        "model": "ledger.account",
+        "pk": 7,
+        "fields": {
+            "parent": 2,
+            "key": "21000",
+            "description": "Credit Card Balance",
+            "kind": 2,
+            "opening_date": "2022-02-16",
+            "is_leaf": true
+        }
+    },
+    {
+        "model": "ledger.transaction",
+        "pk": 1,
+        "fields": {
+            "date": "2022-01-01",
+            "notes": "Opening balances"
+        }
+    },
+    {
+        "model": "ledger.transaction",
+        "pk": 2,
+        "fields": {
+            "date": "2022-02-01",
+            "notes": "Pay down credit card balance for January '22"
+        }
+    },
+    {
+        "model": "ledger.transaction",
+        "pk": 3,
+        "fields": {
+            "date": "2022-02-15",
+            "notes": "First Feb. '22 paycheck"
+        }
+    },
+    {
+        "model": "ledger.transaction",
+        "pk": 4,
+        "fields": {
+            "date": "2022-02-28",
+            "notes": "Second Feb. '22 paycheck"
+        }
+    },
+    {
+        "model": "ledger.detail",
+        "pk": 1,
+        "fields": {
+            "transaction": 1,
+            "credit": "0.00",
+            "debit": "10000.00",
+            "account": 4,
+            "notes": "Opening cash balance"
+        }
+    },
+    {
+        "model": "ledger.detail",
+        "pk": 2,
+        "fields": {
+            "transaction": 1,
+            "credit": "10000.00",
+            "debit": "0.00",
+            "account": 5,
+            "notes": "Opening income recv'd (matches cash balance)"
+        }
+    },
+    {
+        "model": "ledger.detail",
+        "pk": 3,
+        "fields": {
+            "transaction": 1,
+            "credit": "100.00",
+            "debit": "0.00",
+            "account": 7,
+            "notes": "Opening credit card balance"
+        }
+    },
+    {
+        "model": "ledger.detail",
+        "pk": 4,
+        "fields": {
+            "transaction": 1,
+            "credit": "0.00",
+            "debit": "100.00",
+            "account": 6,
+            "notes": "Opening expense amt. (matches credit card balance)"
+        }
+    },
+    {
+        "model": "ledger.detail",
+        "pk": 5,
+        "fields": {
+            "transaction": 2,
+            "credit": "100.00",
+            "debit": "0.00",
+            "account": 4,
+            "notes": "Pay down credit card balance for January '22"
+        }
+    },
+    {
+        "model": "ledger.detail",
+        "pk": 6,
+        "fields": {
+            "transaction": 2,
+            "credit": "0.00",
+            "debit": "100.00",
+            "account": 7,
+            "notes": "Pay down credit card balance for January '22"
+        }
+    },
+    {
+        "model": "ledger.detail",
+        "pk": 7,
+        "fields": {
+            "transaction": 3,
+            "credit": "0.00",
+            "debit": "1600.00",
+            "account": 4,
+            "notes": "Cash received from paycheck"
+        }
+    },
+    {
+        "model": "ledger.detail",
+        "pk": 8,
+        "fields": {
+            "transaction": 3,
+            "credit": "2000.00",
+            "debit": "0.00",
+            "account": 5,
+            "notes": "Gross income from paycheck"
+        }
+    },
+    {
+        "model": "ledger.detail",
+        "pk": 9,
+        "fields": {
+            "transaction": 3,
+            "credit": "0.00",
+            "debit": "400.00",
+            "account": 6,
+            "notes": "Taxes deducted from paycheck"
+        }
+    },
+    {
+        "model": "ledger.detail",
+        "pk": 10,
+        "fields": {
+            "transaction": 4,
+            "credit": "0.00",
+            "debit": "1600.00",
+            "account": 4,
+            "notes": "Cash received from paycheck"
+        }
+    },
+    {
+        "model": "ledger.detail",
+        "pk": 11,
+        "fields": {
+            "transaction": 4,
+            "credit": "2000.00",
+            "debit": "0.00",
+            "account": 5,
+            "notes": "Gross income from paycheck"
+        }
+    },
+    {
+        "model": "ledger.detail",
+        "pk": 12,
+        "fields": {
+            "transaction": 4,
+            "credit": "0.00",
+            "debit": "400.00",
+            "account": 6,
+            "notes": "Taxes deducted from paycheck"
+        }
+    },
+    {
+        "model": "ledger.quicktransaction",
+        "pk": 1,
+        "fields": {
+            "account_from": 4,
+            "account_from_charge_kind": 1,
+            "account_to": 7,
+            "account_to_charge_kind": 2,
+            "name": "Pay down credit card"
+        }
+    },
+    {
+        "model": "ledger.recurringtransaction",
+        "pk": 1,
+        "fields": {
+            "transaction": 3,
+            "name": "Bi-monthly paycheck"
+        }
+    }
+]
