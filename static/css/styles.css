@@ -10,6 +10,12 @@ table.banded tr:nth-child(2n+1) {
     background: rgb(220, 220, 220);
 }
 
+.messages li {
+    padding: 10px;
+    border-radius: 10px;
+    width: 50%;
+}
+
 .messages .success {
     background: green;
     color: white;

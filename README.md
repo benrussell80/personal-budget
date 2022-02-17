@@ -32,6 +32,7 @@ gunicorn budget.wsgi:application --bind localhost:8000
 - Accounting equation safeguards
 - Recurring and quick transactions
 - Reporting
+- Create backups of ledger data (with `python manage.py backup`)
 
 ## Example Images
 ### Index Page
