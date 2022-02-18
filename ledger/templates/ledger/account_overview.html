@@ -41,6 +41,7 @@
             <th>Date</th>
             <th>Credit</th>
             <th>Debit</th>
+            <th>Balance</th>
             <th>Notes</th>
             <th>Transaction</th>
         </tr>
@@ -56,6 +57,7 @@
             {% endif %}
             <td>{{ row.credit|as_currency }}</td>
             <td>{{ row.debit|as_currency }}</td>
+            <td>{{ row.balance|as_currency }}</td>
             <td>{{ row.notes|default:"" }}</td>
             {% if row.transaction %}
             <td><a href="{% url 'ledger:transaction_detail' pk=row.transaction.pk %}">View Transaction</a></td>
@@ -67,13 +69,8 @@
     </tbody>
     <tfoot>
         <tr>
-            {% if account.kind == 1 %}
-            <th colspan="3">Balance</th>
-            <td colspan="3">{{ account.balance|as_currency }}</td>
-            {% else %}
-            <th colspan="2">Balance</th>
+            <th colspan="4">Balance</th>
             <td colspan="4">{{ account.balance|as_currency }}</td>
-            {% endif %}
         </tr>
     </tfoot>
 </table>

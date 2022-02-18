@@ -42,7 +42,7 @@ def create_quick_transaction(request: HttpRequest) -> HttpResponse:
             except Exception as e:
                 messages.error(request, f'{e.__class__}: {e}')
             else:
-                messages.success(request, 'Successfull created Quick Transaction.')
+                messages.success(request, 'Successfully created Quick Transaction.')
                 return redirect(reverse('ledger:index'))
     else:
         form = CreateQuickTransaction()
@@ -237,6 +237,10 @@ def account_overview(request: HttpRequest, pk: int) -> HttpResponse:
     ]
     activity.extend(account.get_all_opening_balance_details())
     activity.sort(key=lambda record: record.get('date', record.get('transaction', {}).get('date')))
+    balance = 0
+    activity = [data | {
+        'balance': (balance := (balance + data['credit'] - data['debit']) if account.kind != Account.AccountKind.ASSET else (balance + data['debit'] - data['credit']))
+    } for data in activity]
     return render(request, 'ledger/account_overview.html', {'account': account, 'activity': activity})
 
 # view transaction detail
