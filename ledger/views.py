@@ -4,26 +4,25 @@ from urllib.parse import urlencode
 
 import pandas as pd
 from bokeh.embed import components
-from bokeh.models import (ColumnDataSource, DataTable, FactorRange, Panel,
-                          TableColumn, Tabs)
+from bokeh.models import ColumnDataSource, FactorRange
 from bokeh.palettes import Category20
 from bokeh.plotting import figure
 from bokeh.resources import INLINE
 from bokeh.transform import factor_cmap
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.db import connection, reset_queries
 from django.db import transaction as db_transaction
 from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.utils.timezone import now
 
-from .forms import (CreateAccount, CreateQuickTransaction, CreateRecurringTransaction,
-                    ExpenseAnalyticsFilterForm, SubmitQuickTransaction,
-                    TransactionDetailFormset, TransactionForm)
-from .models import Account, Detail, QuickTransaction, RecurringTransaction, Transaction
+from .forms import (CreateAccount, CreateQuickTransaction,
+                    CreateRecurringTransaction, ExpenseAnalyticsFilterForm,
+                    SubmitQuickTransaction, TransactionDetailFormset,
+                    TransactionForm)
+from .models import (Account, Detail, QuickTransaction, RecurringTransaction,
+                     Transaction)
 
 
 # Create your views here.
@@ -323,3 +322,7 @@ def create_rec_trans(request: HttpRequest, pk: int) -> HttpResponse:
 def list_rec_trans(request: HttpRequest) -> HttpResponse:
     recs = RecurringTransaction.objects.all()
     return render(request, 'ledger/list_rec_trans.html', {'recs': recs})
+
+
+def tax_calculator(request: HttpRequest) -> HttpResponse:
+    return render(request, 'ledger/tax_calculator.html')

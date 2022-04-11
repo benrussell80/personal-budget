@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Tax Calculator{% endblock title %}
+
+{% load static %}
+
+{% block extrahead %}
+{{ block.super }}
+<script src="{% static 'ledger/js/taxCalculator.js' %}"></script>
+{% endblock extrahead %}
+
+{% block content %}
+<h1>Tax Calculator</h1>
+<form method="post" id="TaxCalculator">
+    <fieldset>
+        <legend>Monthly Burdens</legend>
+        <label for="monthlyStateBurden">State</label>
+        <input type="number" name="monthlyStateBurden" id="monthlyStateBurden" min="0" step="0.01">
+        <label for="monthlyFederalBurden">Federal</label>
+        <input type="number" name="monthlyFederalBurden" id="monthlyFederalBurden" min="0" step="0.01">
+    </fieldset>
+    <fieldset>
+        <legend>YTD Burdens</legend>
+        <label for="stateBurdenYtd">State</label>
+        <input type="number" name="stateBurdenYtd" id="stateBurdenYtd" min="0" step="0.01">
+        <label for="federalBurdenYtd">Federal</label>
+        <input type="number" name="federalBurdenYtd" id="federalBurdenYtd" min="0" step="0.01">
+    </fieldset>
+    <fieldset>
+        <legend>Paid YTD</legend>
+        <label for="statePaidYtd">State</label>
+        <input type="number" name="statePaidYtd" id="statePaidYtd" min="0" step="0.01">
+        <label for="federalPaidYtd">Federal</label>
+        <input type="number" name="federalPaidYtd" id="federalPaidYtd" min="0" step="0.01">
+    </fieldset>
+    <fieldset>
+        <legend>Monthly Payments</legend>
+        <label for="monthlyStatePmt">State</label>
+        <input type="number" name="monthlyStatePmt" id="monthlyStatePmt" min="0" step="0.01">
+        <label for="monthlyFederalPmt">Federal</label>
+        <input type="number" name="monthlyFederalPmt" id="monthlyFederalPmt" min="0" step="0.01">
+    </fieldset>
+    <fieldset>
+        <legend>Months Remaining in Year</legend>
+        <label for="monthsRemaining">Months Remaining in Year</label>
+        <input type="number" name="monthsRemaining" id="monthsRemaining" min="1" step="1">
+    </fieldset>
+    <input type="reset" value="Reset">
+    <input type="submit" value="Calculate">
+</form>
+
+<section id="Results">
+    <dl>
+        <dt>Extra State Withholding Per Month</dt>
+        <dd id="ExtraStateWH"></dd>
+
+        <dt>Extra Federal Withholding Per Month</dt>
+        <dd id="ExtraFederalWH"></dd>
+
+        <dt>Estimated State Refund</dt>
+        <dd id="EstStateRef"></dd>
+        
+        <dt>Estimated Federal Refund</dt>
+        <dd id="EstFederalRef"></dd>
+    </dl>
+</section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        let form = document.querySelector('#TaxCalculator');
+        if (form) {
+            form.addEventListener('submit', event => {
+                handleTaxCalculationFormSubmit(event)
+            })
+        }
+    })
+</script>
+{% endblock content %}
