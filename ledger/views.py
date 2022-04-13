@@ -13,7 +13,7 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction as db_transaction
 from django.db.models import QuerySet
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
@@ -21,37 +21,48 @@ from .forms import (CreateAccount, CreateQuickTransaction,
                     CreateRecurringTransaction, ExpenseAnalyticsFilterForm,
                     SubmitQuickTransaction, TransactionDetailFormset,
                     TransactionForm)
-from .models import (Account, Detail, QuickTransaction, RecurringTransaction,
+from .models import (Account, Company, Detail, QuickTransaction, RecurringTransaction,
                      Transaction)
 
 
 # Create your views here.
-def index(request: HttpRequest):
-    root_accounts = Account.objects.filter(parent=None)  # .prefetch_related('children')
-    return render(request, 'ledger/index.html', {'root_accounts': root_accounts})
+def index(request: HttpRequest) -> HttpResponse:
+    companies = Company.objects.all()
+    return render(request, 'ledger/index.html', {'companies': companies})
+
+
+def company_index(request: HttpRequest, company_pk: int) -> HttpResponse:
+    company = get_object_or_404(Company, pk=company_pk)
+    root_accounts = Account.objects.filter(company=company, parent=None)  # .prefetch_related('children')
+    return render(request, 'ledger/company_index.html', {'root_accounts': root_accounts, 'company': company})
 
 
 # view to create quick transaction
-def create_quick_transaction(request: HttpRequest) -> HttpResponse:
+def create_quick_transaction(request: HttpRequest, company_pk: int) -> HttpResponse:
+    company = get_object_or_404(Company, pk=company_pk)
     if request.method == 'POST':
         form = CreateQuickTransaction(request.POST)
         if form.is_valid():
             try:
-                form.save()
+                instance: QuickTransaction = form.save(commit=False)
+                instance.company = company
+                instance.save()
+                form.save_m2m()
             except Exception as e:
                 messages.error(request, f'{e.__class__}: {e}')
             else:
                 messages.success(request, 'Successfully created Quick Transaction.')
-                return redirect(reverse('ledger:index'))
+                return redirect(reverse('ledger:company_index', kwargs={'company_pk': company.pk}))
     else:
         form = CreateQuickTransaction()
 
-    return render(request, 'ledger/create_quick_transaction.html', {'form': form})
+    return render(request, 'ledger/create_quick_transaction.html', {'form': form, 'company': company})
 
 # view to submit a quick transaction
-def submit_quick_transaction(request: HttpRequest) -> HttpResponse:
+def submit_quick_transaction(request: HttpRequest, company_pk: int) -> HttpResponse:
+    company = get_object_or_404(Company, pk=company_pk)
     if request.method == 'POST':
-        form = SubmitQuickTransaction(request.POST)
+        form = SubmitQuickTransaction(request.POST, company=company)
         if form.is_valid():
             try:
                 with db_transaction.atomic():
@@ -60,7 +71,8 @@ def submit_quick_transaction(request: HttpRequest) -> HttpResponse:
 
                     transaction = Transaction(
                         date=form.cleaned_data['date'],
-                        notes=notes
+                        notes=notes,
+                        company=company,
                     )
 
                     from_detail = Detail(
@@ -89,137 +101,42 @@ def submit_quick_transaction(request: HttpRequest) -> HttpResponse:
                 messages.error(request, 'Unable to submit quick transaction.')
             else:
                 messages.success(request, 'Successfully created quick transaction.')
-                return redirect(reverse('ledger:index'))
+                return redirect(reverse('ledger:company_index', kwargs={'company_pk': company.pk}))
     else:
-        form = SubmitQuickTransaction()
+        form = SubmitQuickTransaction(company=company)
 
-    return render(request, 'ledger/submit_quick_transaction.html', {'form': form})
+    return render(request, 'ledger/submit_quick_transaction.html', {'form': form, 'company': company})
 
 # view to create an account
-def create_account(request: HttpRequest) -> HttpResponse:
+def create_account(request: HttpRequest, company_pk: int) -> HttpResponse:
+    company = get_object_or_404(Company, pk=company_pk)
     if request.method == 'POST':
-        form = CreateAccount(request.POST)
+        form = CreateAccount(request.POST, company=company)
         if form.is_valid():
             try:
-                form.save()
+                instance: Account = form.save(commit=False)
+                instance.company = company
+                instance.save()
+                form.save_m2m()
             except Exception as e:
                 messages.error(request, f'{e.__class__}: {e}')
             else:
                 messages.success(request, 'Successfully created account.')
-                return redirect(reverse('ledger:index'))
+                return redirect(reverse('ledger:company_index', kwargs={'company_pk': company.pk}))
 
     else:
-        form = CreateAccount()
+        form = CreateAccount(company=company)
 
-    return render(request, 'ledger/create_account.html', {'form': form})
-
-# view to see reports (balance sheet, income statement, statement of cash flows)
-# view other reports (income statement, balance sheet)
-
-# view graphs
-def expense_analytics(request: HttpRequest) -> HttpResponse:
-    accounts = request.GET.getlist('accounts', [])
-    start_month = request.GET.get('start_month')
-    end_month = request.GET.get('end_month')
-    try:
-        accounts = list(map(int, accounts))
-        if start_month is None or end_month is None:
-            raise ValueError('Must pass start_month and end_month.')
-        start_month = datetime.datetime.strptime(start_month, '%Y-%m')
-        end_month = datetime.datetime.strptime(end_month, '%Y-%m')
-        end_month = end_month.replace(day=calendar.monthrange(end_month.year, end_month.month)[1], minute=59, hour=23, second=59)
-    except:
-        messages.error(request, 'Invalid parameters received.')
-        return redirect(reverse('ledger:index'))
-
-    # plot amount paid for expenses grouped by month, kind
-    # DataFrame with columns [Account, Month, Amount]
-    accounts: QuerySet[Account] = Account.objects.filter(pk__in=accounts).iterator()
-    dfs = []
-    for acct in accounts:
-        details = acct.get_details().values_list('transaction__date', 'credit', 'debit')
-        df = pd.DataFrame(details, columns=['date', 'credit', 'debit'])
-        df['date'] = pd.to_datetime(df['date'])
-        df = df.loc[
-            (df['date']>=start_month)
-            &(df['date']<=end_month)
-        ]
-        match acct.kind:
-            case Account.AccountKind.ASSET:
-                df['amount'] = df['debit'] - df['credit']
-            case Account.AccountKind.LIABILITY | Account.AccountKind.EQUITY:
-                df['amount'] = df['credit'] - df['debit']
-        
-        df.drop(columns=['credit', 'debit'], inplace=True)
-        df['month'] = df['date'].apply(lambda value: value.strftime('%Y-%m'))
-        df = df.groupby(
-            'month',
-            as_index=False
-        ).agg(
-            amount=pd.NamedAgg(column='amount', aggfunc='sum')
-        )
-        df['account'] = str(acct)
-        dfs.append(df)
-
-    data: pd.DataFrame = pd.concat(dfs, ignore_index=True)
-    if data.size == 0:
-        messages.warning(request, 'No data found.')
-        return redirect(reverse('ledger:expense_analytics_filter'))
-    
-    x = data.apply(lambda row: (row['account'], row['month']), axis=1).to_list()
-
-    x_range = FactorRange(*x)
-    months = data['month'].drop_duplicates().sort_values().to_list()
-    palette = Category20[max(len(months), 3)]
-
-    source = ColumnDataSource({
-        'x': x,
-        'amount': data['amount']
-    })
-
-    plot = figure(
-        x_range=x_range
-    )
-    plot.vbar(
-        x='x',
-        top='amount',
-        source=source,
-        line_color='white',
-        fill_color=factor_cmap('x', factors=months, palette=palette)
-    )
-    script, div = components(plot)
-    return render(request, 'ledger/expense_analytics.html', {'script': script, 'div': div, 'INLINE': INLINE.render()})
-
-
-def expense_analytics_filter(request: HttpRequest) -> HttpResponse:
-    if request.method == 'POST':
-        form = ExpenseAnalyticsFilterForm(request.POST)
-        if form.is_valid():
-            start_month = form.cleaned_data['start_month']
-            end_month = form.cleaned_data['end_month']
-            accounts = form.cleaned_data['accounts']
-            params = [
-                ('start_month', start_month.strftime('%Y-%m')),
-                ('end_month', end_month.strftime('%Y-%m')),
-                *[
-                    ('accounts', pk)
-                    for pk in accounts.values_list('pk', flat=True)
-                ]
-            ]
-            return redirect(reverse('ledger:expense_analytics') + '?' + urlencode(params))
-    else:
-        form = ExpenseAnalyticsFilterForm()
-
-    return render(request, 'ledger/expense_analytics_filter.html', {'form': form})
-
-
-def analytics(request: HttpRequest) -> HttpResponse:
-    return render(request, 'ledger/analytics.html')
+    return render(request, 'ledger/create_account.html', {'form': form, 'company': company})
 
 
 # view individual account activity
-def account_overview(request: HttpRequest, pk: int) -> HttpResponse:
+def account_overview(request: HttpRequest, company_pk: int, pk: int) -> HttpResponse:
+    company = get_object_or_404(Company, pk=company_pk)
     account = get_object_or_404(Account, pk=pk)
+    if company != account.company:
+        return HttpResponseBadRequest('That account does not belong to that company.')
+
     details = account.get_details()
     activity = [
         {
@@ -240,15 +157,20 @@ def account_overview(request: HttpRequest, pk: int) -> HttpResponse:
     activity = [data | {
         'balance': (balance := (balance + data['credit'] - data['debit']) if account.kind != Account.AccountKind.ASSET else (balance + data['debit'] - data['credit']))
     } for data in activity]
-    return render(request, 'ledger/account_overview.html', {'account': account, 'activity': activity})
+    return render(request, 'ledger/account_overview.html', {'account': account, 'activity': activity, 'company': company})
 
 # view transaction detail
-def transaction_detail(request: HttpRequest, pk: int) -> HttpResponse:
+def transaction_detail(request: HttpRequest, company_pk: int, pk: int) -> HttpResponse:
+    company = get_object_or_404(Company, pk=company_pk)
     transaction = get_object_or_404(Transaction.objects.prefetch_related('details'), pk=pk)
-    return render(request, 'ledger/transaction_detail.html', {'transaction': transaction})
+    if company != transaction.company:
+        return HttpResponseBadRequest('That transaction does not belong to that company.')
+    
+    return render(request, 'ledger/transaction_detail.html', {'transaction': transaction, 'company': company})
 
 # view to submit a transaction
-def submit_transaction(request: HttpRequest) -> HttpResponse:
+def submit_transaction(request: HttpRequest, company_pk: int) -> HttpResponse:
+    company = get_object_or_404(Company, pk=company_pk)
     rec_trans_pk = request.GET.get('rec_trans_pk', None)
     rec_trans: RecurringTransaction | None
     if rec_trans_pk is not None:
@@ -256,6 +178,9 @@ def submit_transaction(request: HttpRequest) -> HttpResponse:
             rec_trans = RecurringTransaction.objects.get(pk=int(rec_trans_pk))
         except:
             rec_trans = None
+        else:
+            if rec_trans is not None and rec_trans.transaction.company != company:
+                return HttpResponseBadRequest('That recurring transaction does not belong to that company.')
     else:
         rec_trans = None
 
@@ -265,7 +190,10 @@ def submit_transaction(request: HttpRequest) -> HttpResponse:
         if transaction_form.is_valid() and formset.is_valid():
             try:
                 with db_transaction.atomic():
-                    transaction: Transaction = transaction_form.save()
+                    transaction: Transaction = transaction_form.save(commit=False)
+                    transaction.company = company
+                    transaction.save()
+                    transaction_form.save_m2m()
                     formset.instance = transaction
                     formset.save()
                     try:
@@ -277,7 +205,7 @@ def submit_transaction(request: HttpRequest) -> HttpResponse:
                 messages.error(request, 'Unable to save transaction.')
             else:
                 messages.success(request, 'Successfully posted transaction.')
-                return redirect(reverse('ledger:index'))
+                return redirect(reverse('ledger:company_index', kwargs={'company_pk': company.pk}))
     else:
         if rec_trans is not None:
             transaction_form = TransactionForm(initial={
@@ -297,11 +225,15 @@ def submit_transaction(request: HttpRequest) -> HttpResponse:
             transaction_form = TransactionForm()
             formset = TransactionDetailFormset()
     
-    return render(request, 'ledger/submit_transaction.html', {'transaction_form': transaction_form, 'formset': formset})
+    return render(request, 'ledger/submit_transaction.html', {'transaction_form': transaction_form, 'formset': formset, 'company': company})
 
 
-def create_rec_trans(request: HttpRequest, pk: int) -> HttpResponse:
+def create_rec_trans(request: HttpRequest, company_pk: int, pk: int) -> HttpResponse:
+    company = get_object_or_404(Company, pk=company_pk)
     transaction = get_object_or_404(Transaction.objects.prefetch_related('details'), pk=pk)
+    if company != transaction.company:
+        return HttpResponseBadRequest('That transaction does not belong to that company.')
+    
     if request.method == 'POST':
         form = CreateRecurringTransaction(request.POST)
         if form.is_valid():
@@ -312,16 +244,17 @@ def create_rec_trans(request: HttpRequest, pk: int) -> HttpResponse:
                 messages.error(request, f'Unable to create recurring transaction: {e.__class__.__name__}{str(e)}')
             else:
                 messages.success(request, 'Successfully created recurring transaction.')
-                return redirect(reverse('ledger:index'))
+                return redirect(reverse('ledger:company_index', kwargs={'company_pk': company.pk}))
     else:
         form = CreateRecurringTransaction()
     
-    return render(request, 'ledger/create_rec_trans.html', {'form': form, 'transaction': transaction})
+    return render(request, 'ledger/create_rec_trans.html', {'form': form, 'transaction': transaction, 'company': company})
 
 
-def list_rec_trans(request: HttpRequest) -> HttpResponse:
-    recs = RecurringTransaction.objects.all()
-    return render(request, 'ledger/list_rec_trans.html', {'recs': recs})
+def list_rec_trans(request: HttpRequest, company_pk: int) -> HttpResponse:
+    company = get_object_or_404(Company, pk=company_pk)
+    recs = RecurringTransaction.objects.filter(transaction__company=company)
+    return render(request, 'ledger/list_rec_trans.html', {'recs': recs, 'company': company})
 
 
 def tax_calculator(request: HttpRequest) -> HttpResponse:

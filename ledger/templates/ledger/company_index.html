@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% load ledger_tags %}
+
+{% block title %}{{ company.name }} - Home{% endblock title %}
+
+{% block content %}
+<h1>{{ company.name }} - Overview</h1>
+{% for account in root_accounts %}
+    <details open>
+        <summary>
+            <a href="{% url 'ledger:account_overview' company_pk=company.pk pk=account.pk %}">{{ account }}</a>: {{ account.balance|as_currency }}
+        </summary>
+        {% if account.children.count %}
+        {% include 'account_tree.html' %}
+        {% endif %}
+    </details>
+{% endfor %}
+{% endblock content %}

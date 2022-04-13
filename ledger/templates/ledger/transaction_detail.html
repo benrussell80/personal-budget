@@ -15,7 +15,7 @@
 
 </dl>
 
-<a href="{% url 'ledger:create_rec_trans' pk=transaction.pk %}">Save as Recurring Transaction</a>
+<a href="{% url 'ledger:create_rec_trans' company_pk=company.pk pk=transaction.pk %}">Save as Recurring Transaction</a>
 
 <h2>Details</h2>
 <table class="banded">
@@ -30,7 +30,7 @@
     <tbody>
         {% for detail in transaction.details.all %}
         <tr>
-            <td><a href="{% url 'ledger:account_overview' pk=detail.account_id %}">{{ detail.account }}</a></td>
+            <td><a href="{% url 'ledger:account_overview' company_pk=company.pk pk=detail.account_id %}">{{ detail.account }}</a></td>
             <td>{{ detail.credit|as_currency }}</td>
             <td>{{ detail.debit|as_currency }}</td>
             <td>{{ detail.notes|default:"" }}</td>

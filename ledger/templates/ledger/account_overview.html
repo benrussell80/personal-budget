@@ -15,7 +15,7 @@
 
     {% if account.parent %}
     <dt>Parent Account</dt>
-    <dd><a href="{% url 'ledger:account_overview' pk=account.parent_id %}">{{ account.parent }}</a></dd>
+    <dd><a href="{% url 'ledger:account_overview' company_pk=company.pk pk=account.parent_id %}">{{ account.parent }}</a></dd>
     {% endif %}
 
     {% if account.children.count %}
@@ -23,7 +23,7 @@
     <dd>
         <ul>
             {% for child in account.children.all %}
-            <li><a href="{% url 'ledger:account_overview' pk=child.pk %}">{{ child }}</a></li>
+            <li><a href="{% url 'ledger:account_overview' company_pk=company.pk pk=child.pk %}">{{ child }}</a></li>
             {% endfor %}
         </ul>
     </dd>
@@ -49,7 +49,7 @@
     <tbody>
         {% for row in activity %}
         <tr>
-            <td><a href="{% url 'ledger:account_overview' pk=row.account.pk %}">{{ row.account }}</a></td>
+            <td><a href="{% url 'ledger:account_overview' company_pk=company.pk pk=row.account.pk %}">{{ row.account }}</a></td>
             {% if row.date %}
             <td>{{ row.date|date:"SHORT_DATE_FORMAT" }}</td>
             {% else %}
@@ -60,7 +60,7 @@
             <td>{{ row.balance|as_currency }}</td>
             <td>{{ row.notes|default:"" }}</td>
             {% if row.transaction %}
-            <td><a href="{% url 'ledger:transaction_detail' pk=row.transaction.pk %}">View Transaction</a></td>
+            <td><a href="{% url 'ledger:transaction_detail' company_pk=company.pk pk=row.transaction.pk %}">View Transaction</a></td>
             {% else %}
             <td></td>
             {% endif %}

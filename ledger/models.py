@@ -6,6 +6,16 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 
 # Create your models here.
+class Company(models.Model):
+    class Meta:
+        verbose_name_plural = 'companies'
+
+    name = models.TextField(unique=True)
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class AccountModelManager(models.Manager):
     def get_queryset(self) -> QuerySet['Account']:
         return super().get_queryset().prefetch_related('children', 'transaction_details')
@@ -27,6 +37,7 @@ class Account(models.Model):
         Equity accounts: Record an increase to equity (revenues) with a credit and a decrease to equity (expenses) with a debit.
         """
 
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='accounts')
     parent = models.ForeignKey('ledger.Account', on_delete=models.CASCADE, null=True, blank=True, related_name='children')
     key = models.TextField(unique=True)
     description = models.TextField()
@@ -78,12 +89,16 @@ class Account(models.Model):
 class Transaction(models.Model):
     date = models.DateField()
     notes = models.TextField(null=True, blank=True)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='transactions')
 
     def clean(self) -> None:
         assets = Decimal(0)
         liabilities = Decimal(0)
         equities = Decimal(0)
         for detail in self.details.iterator():
+            if detail.account.company != self.company:
+                raise ValidationError('All detail lines must use accounts from the same company.')
+            
             match detail.account.kind:
                 case Account.AccountKind.ASSET:
                     assets += detail.debit - detail.credit
@@ -117,6 +132,7 @@ class Detail(models.Model):
 
     objects = DetailManager()
 
+
 class UserDefinedAttribute(models.Model):
     class AttributeKind(models.IntegerChoices):
         TEXT = 0
@@ -128,6 +144,7 @@ class UserDefinedAttribute(models.Model):
     name = models.TextField()
     kind = models.SmallIntegerField(choices=AttributeKind.choices)
     metadata = models.TextField(null=True, editable=False)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='udf_attributes')
 
     def __str__(self) -> str:
         return self.name
@@ -146,6 +163,10 @@ class UserDefinedAttributeDetailThrough(models.Model):
             )
         ]
 
+    def clean(self) -> None:
+        if self.detail.account.company != self.attribute.company:
+            raise ValidationError('Detail must be from same company as attribute.')
+
 
 class QuickTransaction(models.Model):
     class ChargeKind(models.IntegerChoices):
@@ -157,8 +178,12 @@ class QuickTransaction(models.Model):
     account_to = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='to_quick_charges')
     account_to_charge_kind = models.SmallIntegerField(choices=ChargeKind.choices)
     name = models.TextField()
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='quick_transactions')
 
     def clean(self) -> None:
+        if self.account_from.company != self.company or self.account_to.company != self.company:
+            raise ValidationError('To and From accounts must belong to the same company.')
+        
         asset = int(self.account_from.kind == Account.AccountKind.ASSET) \
             * (-1 if self.account_from_charge_kind == QuickTransaction.ChargeKind.CREDIT else 1) \
             + int(self.account_to.kind == Account.AccountKind.ASSET) \
@@ -184,6 +209,7 @@ class QuickTransaction(models.Model):
 class RecurringTransaction(models.Model):
     transaction = models.ForeignKey(Transaction, models.CASCADE, related_name='recurring_setups')
     name = models.TextField()
+
 
     def __str__(self) -> str:
         return self.name

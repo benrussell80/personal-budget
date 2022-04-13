@@ -2,18 +2,13 @@
 
 {% load ledger_tags %}
 
-{% block title %}Index{% endblock title %}
+{% block title %}Home{% endblock title %}
 
 {% block content %}
-<h1>Account Overview</h1>
-{% for account in root_accounts %}
-    <details open>
-        <summary>
-            <a href="{% url 'ledger:account_overview' pk=account.pk %}">{{ account }}</a>: {{ account.balance|as_currency }}
-        </summary>
-        {% if account.children.count %}
-        {% include 'account_tree.html' %}
-        {% endif %}
-    </details>
-{% endfor %}
+<h1>Companies</h1>
+<ul>
+    {% for company in companies %}
+    <li><a href="{% url 'ledger:company_index' company_pk=company.pk %}">{{ company.name }}</a></li>
+    {% endfor %}
+</ul>
 {% endblock content %}

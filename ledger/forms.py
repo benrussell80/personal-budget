@@ -1,12 +1,14 @@
 from django import forms
 
-from .models import Detail, QuickTransaction, Account, RecurringTransaction, Transaction
+from .models import Company, Detail, QuickTransaction, Account, RecurringTransaction, Transaction
 
 # form to create a quick transaction
 class CreateQuickTransaction(forms.ModelForm):
     class Meta:
         model = QuickTransaction
-        exclude = []
+        exclude = [
+            'company',
+        ]
         widgets = {
             'name': forms.TextInput()
         }
@@ -15,10 +17,13 @@ class CreateQuickTransaction(forms.ModelForm):
 # form to submit a quick transaction
 class SubmitQuickTransaction(forms.Form):
     date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
-    quick_transaction = forms.ModelChoiceField(QuickTransaction.objects)
+    quick_transaction = forms.ModelChoiceField(None)
     amount = forms.DecimalField(decimal_places=2, max_digits=12, min_value=0)
     notes = forms.CharField(widget=forms.Textarea(), required=False)
 
+    def __init__(self, *args, company: Company, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['quick_transaction'].queryset = QuickTransaction.objects.filter(company=company)
 
 # form to submit a transaction
 class DetailForm(forms.ModelForm):
@@ -49,7 +54,9 @@ TransactionDetailFormset = forms.inlineformset_factory(
 class TransactionForm(forms.ModelForm):
     class Meta:
         model = Transaction
-        exclude = []
+        exclude = [
+            'company',
+        ]
         widgets = {
             'date': forms.DateInput(attrs={'type': 'date'})
         }
@@ -57,16 +64,18 @@ class TransactionForm(forms.ModelForm):
 
 class CreateAccount(forms.ModelForm):
     class Meta:
-        exclude = []
+        exclude = [
+            'company',
+        ]
         model = Account
         widgets = {
             'key': forms.TextInput(),
             'description': forms.TextInput()
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, company: Company, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['parent'].queryset = Account.objects.filter(is_leaf=False)
+        self.fields['parent'].queryset = Account.objects.filter(is_leaf=False, company=company)
 
 
 class MonthField(forms.DateField):

@@ -1,10 +1,9 @@
-from os import name
-from django.urls import path
+from django.urls import path, include
 from . import views
 
 app_name = 'ledger'
-urlpatterns = [
-    path('', views.index, name='index'),
+company_relative_urlpatterns = [
+    path('', views.company_index, name='company_index'),
     path('qt/create/', views.create_quick_transaction, name='create_quick_transaction'),
     path('qt/submit/', views.submit_quick_transaction, name='submit_quick_transaction'),
     path('account/create/', views.create_account, name='create_account'),
@@ -13,8 +12,10 @@ urlpatterns = [
     path('rec_trans/from/<int:pk>/', views.create_rec_trans, name='create_rec_trans'),
     path('rec_trans/list/', views.list_rec_trans, name='list_rec_trans'),
     path('transaction/submit/', views.submit_transaction, name='submit_transaction'),
-    path('analytics/expenses/', views.expense_analytics, name='expense_analytics'),
-    path('analytics/expenses/filter/', views.expense_analytics_filter, name='expense_analytics_filter'),
-    path('analytics/', views.analytics, name='analytics'),
+]
+
+urlpatterns = [
+    path('', views.index, name='index'),
+    path('company/<int:company_pk>/', include(company_relative_urlpatterns)),
     path('tax_calculator/', views.tax_calculator, name='tax_calculator'),
 ]
