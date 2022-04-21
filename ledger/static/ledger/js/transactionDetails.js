@@ -52,6 +52,7 @@ const deleteDetailTableRow = (deleteButton) => {
     tr.remove();
     decrementTotalFormAmount();
     checkDeleteButtonDisabledStatus();
+    updateTableTotals();
 }
 
 const checkDeleteButtonDisabledStatus = () => {
