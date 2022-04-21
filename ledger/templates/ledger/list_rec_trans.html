@@ -8,7 +8,7 @@
     <thead>
         <tr>
             <th>Name</th>
-            <th>Action</th>
+            <th colspan="2">Actions</th>
         </tr>
     </thead>
     <tbody>
@@ -16,6 +16,7 @@
         <tr>
             <td>{{ rec }}</td>
             <td><a href="{% url 'ledger:submit_transaction' company_pk=company.pk %}?rec_trans_pk={{ rec.pk }}">Prepare Transaction</a></td>
+            <td><a href="{% url 'ledger:edit_recurring_transaction' company_pk=company.pk rec_trans_pk=rec.pk %}">Edit Recurring Transaction</a></td>
         </tr>
         {% endfor %}
     </tbody>

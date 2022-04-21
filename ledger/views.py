@@ -1,27 +1,15 @@
-import calendar
-import datetime
-from urllib.parse import urlencode
-
-import pandas as pd
-from bokeh.embed import components
-from bokeh.models import ColumnDataSource, FactorRange
-from bokeh.palettes import Category20
-from bokeh.plotting import figure
-from bokeh.resources import INLINE
-from bokeh.transform import factor_cmap
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction as db_transaction
-from django.db.models import QuerySet
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
-from .forms import (CreateAccount, CreateQuickTransaction,
-                    CreateRecurringTransaction, ExpenseAnalyticsFilterForm,
-                    SubmitQuickTransaction, TransactionDetailFormset,
-                    TransactionForm)
-from .models import (Account, Company, Detail, QuickTransaction, RecurringTransaction,
+from .forms import (CompanyForm, CreateAccount, CreateQuickTransaction,
+                    CreateRecurringTransaction, RecurringTransactionDetailFormset, RecurringTransactionForm, SubmitQuickTransaction,
+                    TransactionDetailFormset, TransactionForm)
+from .models import (Account, Company, Detail, QuickTransaction,
+                     RecurringTransaction, RecurringTransactionDetail,
                      Transaction)
 
 
@@ -179,7 +167,7 @@ def submit_transaction(request: HttpRequest, company_pk: int) -> HttpResponse:
         except:
             rec_trans = None
         else:
-            if rec_trans is not None and rec_trans.transaction.company != company:
+            if rec_trans is not None and rec_trans.company != company:
                 return HttpResponseBadRequest('That recurring transaction does not belong to that company.')
     else:
         rec_trans = None
@@ -209,7 +197,7 @@ def submit_transaction(request: HttpRequest, company_pk: int) -> HttpResponse:
     else:
         if rec_trans is not None:
             transaction_form = TransactionForm(initial={
-                'notes': rec_trans.transaction.notes
+                'notes': rec_trans.notes
             })
             formset = TransactionDetailFormset(initial=[
                 {
@@ -218,9 +206,9 @@ def submit_transaction(request: HttpRequest, company_pk: int) -> HttpResponse:
                     'account': detail.account,
                     'notes': detail.notes
                 }
-                for detail in rec_trans.transaction.details.iterator()
+                for detail in rec_trans.details.iterator()
             ])
-            formset.extra = min(formset.extra, rec_trans.transaction.details.count() - formset.min_num)
+            formset.extra = min(formset.extra, rec_trans.details.count() - formset.min_num)
         else:
             transaction_form = TransactionForm()
             formset = TransactionDetailFormset()
@@ -237,9 +225,21 @@ def create_rec_trans(request: HttpRequest, company_pk: int, pk: int) -> HttpResp
     if request.method == 'POST':
         form = CreateRecurringTransaction(request.POST)
         if form.is_valid():
-            form.instance.transaction = transaction
             try:
-                form.save()
+                form.instance.company = company
+                form.instance.notes = transaction.notes
+                with db_transaction.atomic():
+                    rec_trans = form.save()
+                    RecurringTransactionDetail.objects.bulk_create([
+                        RecurringTransactionDetail(
+                            parent=rec_trans,
+                            credit=detail.credit,
+                            debit=detail.debit,
+                            account=detail.account,
+                            notes=detail.notes,
+                        )
+                        for detail in transaction.details.iterator()
+                    ])
             except Exception as e:
                 messages.error(request, f'Unable to create recurring transaction: {e.__class__.__name__}{str(e)}')
             else:
@@ -253,9 +253,85 @@ def create_rec_trans(request: HttpRequest, company_pk: int, pk: int) -> HttpResp
 
 def list_rec_trans(request: HttpRequest, company_pk: int) -> HttpResponse:
     company = get_object_or_404(Company, pk=company_pk)
-    recs = RecurringTransaction.objects.filter(transaction__company=company)
+    recs = RecurringTransaction.objects.filter(company=company)
     return render(request, 'ledger/list_rec_trans.html', {'recs': recs, 'company': company})
 
 
 def tax_calculator(request: HttpRequest) -> HttpResponse:
     return render(request, 'ledger/tax_calculator.html')
+
+
+def edit_transaction(request: HttpRequest, company_pk: int, transaction_pk: int) -> HttpResponse:
+    company = get_object_or_404(Company, pk=company_pk)
+    transaction = get_object_or_404(Transaction, pk=transaction_pk)
+    if transaction.company != company:
+        return HttpResponseBadRequest('That transaction does not belong to that company.')
+
+    if request.method == 'POST':
+        transaction_form = TransactionForm(request.POST, instance=transaction)
+        formset = TransactionDetailFormset(request.POST, instance=transaction)
+        if transaction_form.is_valid() and formset.is_valid():
+            try:
+                with db_transaction.atomic():
+                    transaction_form.save()
+                    formset.save()
+                    try:
+                        transaction.full_clean()
+                    except ValidationError as e:
+                        transaction_form.add_error(None, e)
+                        raise
+            except Exception as e:
+                messages.error(request, 'Unable to save transaction.')
+            else:
+                messages.success(request, 'Successfully updated transaction.')
+                return redirect(reverse('ledger:company_index', kwargs={'company_pk': company.pk}))
+
+    else:
+        transaction_form = TransactionForm(instance=transaction)
+        formset = TransactionDetailFormset(instance=transaction)
+
+    return render(request, 'ledger/edit_transaction.html', {'company': company, 'transaction_form': transaction_form, 'formset': formset})
+
+
+def edit_recurring_transaction(request: HttpRequest, company_pk: int, rec_trans_pk: int) -> HttpResponse:
+    company = get_object_or_404(Company, pk=company_pk)
+    rec_trans = get_object_or_404(RecurringTransaction, pk=rec_trans_pk)
+    if rec_trans.company != company:
+        return HttpResponseBadRequest('That recurring transaction does not belong to that company.')
+
+    if request.method == 'POST':
+        transaction_form = RecurringTransactionForm(request.POST, instance=rec_trans)
+        formset = RecurringTransactionDetailFormset(request.POST, instance=rec_trans)
+        if transaction_form.is_valid() and formset.is_valid():
+            try:
+                with db_transaction.atomic():
+                    transaction_form.save()
+                    formset.save()
+                    try:
+                        rec_trans.full_clean()
+                    except ValidationError as e:
+                        transaction_form.add_error(None, e)
+                        raise
+            except Exception as e:
+                messages.error(request, 'Unable to save rec_trans.')
+            else:
+                messages.success(request, 'Successfully updated rec_trans.')
+                return redirect(reverse('ledger:company_index', kwargs={'company_pk': company.pk}))
+
+    else:
+        transaction_form = RecurringTransactionForm(instance=rec_trans)
+        formset = RecurringTransactionDetailFormset(instance=rec_trans)
+
+    return render(request, 'ledger/edit_recurring_transaction.html', {'company': company, 'transaction_form': transaction_form, 'formset': formset})
+
+
+def create_company(request: HttpRequest) -> HttpResponse:
+    if request.method == 'POST':
+        form = CompanyForm(request.POST)
+        if form.is_valid():
+            company = form.save()
+            return redirect(reverse('ledger:company_index', kwargs={'company_pk': company.pk}))
+    else:
+        form = CompanyForm()
+
+    return render(request, 'ledger/create_company.html', {'form': form})

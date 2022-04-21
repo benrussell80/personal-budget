@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Company, Detail, QuickTransaction, Account, RecurringTransaction, Transaction
+from .models import Company, Detail, QuickTransaction, Account, RecurringTransaction, RecurringTransactionDetail, Transaction
 
 # form to create a quick transaction
 class CreateQuickTransaction(forms.ModelForm):
@@ -51,6 +51,31 @@ TransactionDetailFormset = forms.inlineformset_factory(
 )
 
 
+class RecurringTransactionDetailForm(forms.ModelForm):
+    class Meta:
+        model = RecurringTransactionDetail
+        fields = [
+            'account',
+            'credit',
+            'debit',
+            'notes',
+        ]
+        widgets = {
+            'notes': forms.TextInput()
+        }
+
+
+RecurringTransactionDetailFormset = forms.inlineformset_factory(
+    parent_model=RecurringTransaction,
+    model=RecurringTransactionDetail,
+    form=RecurringTransactionDetailForm,
+    extra=10,
+    exclude=[],
+    can_delete=True,
+    min_num=2,
+)
+
+
 class TransactionForm(forms.ModelForm):
     class Meta:
         model = Transaction
@@ -59,6 +84,17 @@ class TransactionForm(forms.ModelForm):
         ]
         widgets = {
             'date': forms.DateInput(attrs={'type': 'date'})
+        }
+
+
+class RecurringTransactionForm(forms.ModelForm):
+    class Meta:
+        model = RecurringTransaction
+        exclude = [
+            'company',
+        ]
+        widgets = {
+            'name': forms.TextInput()
         }
 
 
@@ -93,6 +129,15 @@ class CreateRecurringTransaction(forms.ModelForm):
     class Meta:
         model = RecurringTransaction
         fields = ['name']
+        widgets = {
+            'name': forms.TextInput()
+        }
+
+
+class CompanyForm(forms.ModelForm):
+    class Meta:
+        model = Company
+        exclude = []
         widgets = {
             'name': forms.TextInput()
         }

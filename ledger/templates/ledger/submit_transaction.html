@@ -9,7 +9,7 @@
 {% endblock extrahead %}
 
 {% block content %}
-<h1>Submit a Transaction</h1>
+<h1>{% block pagetitle %}Submit a Transaction{% endblock pagetitle %}</h1>
 <form method="post">
     {% csrf_token %}
     <fieldset>
@@ -52,7 +52,7 @@
         </table>
         <button type="button" onclick="addRowToDetailTable()" id="AddRowButton">Add Row</button>
     </fieldset>
-    <input type="submit" value="Submit">
+    <input type="submit" value="{% block submitvalue %}Submit{% endblock submitvalue %}">
 </form>
 {% include 'dea.html' %}
 {% endblock content %}

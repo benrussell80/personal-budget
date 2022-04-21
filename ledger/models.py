@@ -207,10 +207,25 @@ class QuickTransaction(models.Model):
 
 
 class RecurringTransaction(models.Model):
-    transaction = models.ForeignKey(Transaction, models.CASCADE, related_name='recurring_setups')
     name = models.TextField()
-
+    company = models.ForeignKey(Company, models.CASCADE, related_name='recurring_transactions')
+    notes = models.TextField(null=True, blank=True)
 
     def __str__(self) -> str:
         return self.name
-    
+
+    def clean(self) -> None:
+        # all detail accounts must be in company
+        Transaction.clean(self)
+
+
+class RecurringTransactionDetail(models.Model):
+    parent = models.ForeignKey(RecurringTransaction, models.CASCADE, related_name='details')
+    credit = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(0)])
+    debit = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(0)])
+    account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='recurring_transaction_details')
+    notes = models.TextField(null=True, blank=True)
+
+    def clean(self) -> None:
+        if self.credit != 0 and self.debit != 0:
+            raise ValidationError('Detail must be credit or debit; not both.')
