@@ -13,6 +13,11 @@ class CreateQuickTransaction(forms.ModelForm):
             'name': forms.TextInput()
         }
 
+    def __init__(self, *args, company: Company, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields['account_from'].queryset = Account.objects.filter(company=company, is_leaf=True)
+        self.fields['account_to'].queryset = Account.objects.filter(company=company, is_leaf=True)
+
 
 # form to submit a quick transaction
 class SubmitQuickTransaction(forms.Form):
@@ -38,6 +43,10 @@ class DetailForm(forms.ModelForm):
         widgets = {
             'notes': forms.TextInput()
         }
+
+    def __init__(self, *args, company: Company, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields['account'].queryset = Account.objects.filter(company=company, is_leaf=True)
 
 
 TransactionDetailFormset = forms.inlineformset_factory(
@@ -112,17 +121,6 @@ class CreateAccount(forms.ModelForm):
     def __init__(self, *args, company: Company, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['parent'].queryset = Account.objects.filter(is_leaf=False, company=company)
-
-
-class MonthField(forms.DateField):
-    widget = forms.DateInput(attrs={'type': 'month'})
-    input_formats = ['%Y-%m', '%m/%Y']
-
-
-class ExpenseAnalyticsFilterForm(forms.Form):
-    start_month = MonthField()
-    end_month = MonthField()
-    accounts = forms.ModelMultipleChoiceField(Account.objects)
 
 
 class CreateRecurringTransaction(forms.ModelForm):

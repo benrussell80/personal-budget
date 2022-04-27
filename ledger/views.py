@@ -29,7 +29,7 @@ def company_index(request: HttpRequest, company_pk: int) -> HttpResponse:
 def create_quick_transaction(request: HttpRequest, company_pk: int) -> HttpResponse:
     company = get_object_or_404(Company, pk=company_pk)
     if request.method == 'POST':
-        form = CreateQuickTransaction(request.POST)
+        form = CreateQuickTransaction(request.POST, company=company)
         if form.is_valid():
             try:
                 instance: QuickTransaction = form.save(commit=False)
@@ -42,7 +42,7 @@ def create_quick_transaction(request: HttpRequest, company_pk: int) -> HttpRespo
                 messages.success(request, 'Successfully created Quick Transaction.')
                 return redirect(reverse('ledger:company_index', kwargs={'company_pk': company.pk}))
     else:
-        form = CreateQuickTransaction()
+        form = CreateQuickTransaction(company=company)
 
     return render(request, 'ledger/create_quick_transaction.html', {'form': form, 'company': company})
 
@@ -174,7 +174,7 @@ def submit_transaction(request: HttpRequest, company_pk: int) -> HttpResponse:
 
     if request.method == 'POST':
         transaction_form = TransactionForm(request.POST)
-        formset = TransactionDetailFormset(request.POST)
+        formset = TransactionDetailFormset(request.POST, form_kwargs={'company': company})
         if transaction_form.is_valid() and formset.is_valid():
             try:
                 with db_transaction.atomic():
@@ -207,11 +207,11 @@ def submit_transaction(request: HttpRequest, company_pk: int) -> HttpResponse:
                     'notes': detail.notes
                 }
                 for detail in rec_trans.details.iterator()
-            ])
+            ], form_kwargs={'company': company})
             formset.extra = min(formset.extra, rec_trans.details.count() - formset.min_num)
         else:
             transaction_form = TransactionForm()
-            formset = TransactionDetailFormset()
+            formset = TransactionDetailFormset(form_kwargs={'company': company})
     
     return render(request, 'ledger/submit_transaction.html', {'transaction_form': transaction_form, 'formset': formset, 'company': company})
 
@@ -268,8 +268,8 @@ def edit_transaction(request: HttpRequest, company_pk: int, transaction_pk: int)
         return HttpResponseBadRequest('That transaction does not belong to that company.')
 
     if request.method == 'POST':
-        transaction_form = TransactionForm(request.POST, instance=transaction)
-        formset = TransactionDetailFormset(request.POST, instance=transaction)
+        transaction_form = TransactionForm(request.POST, instance=transaction, company=company)
+        formset = TransactionDetailFormset(request.POST, instance=transaction, company=company)
         if transaction_form.is_valid() and formset.is_valid():
             try:
                 with db_transaction.atomic():
