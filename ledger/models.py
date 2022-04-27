@@ -39,7 +39,7 @@ class Account(models.Model):
 
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='accounts')
     parent = models.ForeignKey('ledger.Account', on_delete=models.CASCADE, null=True, blank=True, related_name='children')
-    key = models.TextField(unique=True)
+    key = models.TextField()
     description = models.TextField()
     kind = models.SmallIntegerField(choices=AccountKind.choices)
     opening_date = models.DateField(auto_now_add=True)
@@ -84,6 +84,12 @@ class Account(models.Model):
 
     class Meta:
         ordering = ['key']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['key', 'company'],
+                name='account_key_unique_for_company',
+            )
+        ]
 
 
 class Transaction(models.Model):
