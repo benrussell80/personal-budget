@@ -268,8 +268,8 @@ def edit_transaction(request: HttpRequest, company_pk: int, transaction_pk: int)
         return HttpResponseBadRequest('That transaction does not belong to that company.')
 
     if request.method == 'POST':
-        transaction_form = TransactionForm(request.POST, instance=transaction, company=company)
-        formset = TransactionDetailFormset(request.POST, instance=transaction, company=company)
+        transaction_form = TransactionForm(request.POST, instance=transaction)
+        formset = TransactionDetailFormset(request.POST, instance=transaction, form_kwargs={'company': company})
         if transaction_form.is_valid() and formset.is_valid():
             try:
                 with db_transaction.atomic():
@@ -288,7 +288,7 @@ def edit_transaction(request: HttpRequest, company_pk: int, transaction_pk: int)
 
     else:
         transaction_form = TransactionForm(instance=transaction)
-        formset = TransactionDetailFormset(instance=transaction)
+        formset = TransactionDetailFormset(instance=transaction, form_kwargs={'company': company})
 
     return render(request, 'ledger/edit_transaction.html', {'company': company, 'transaction_form': transaction_form, 'formset': formset})
 
