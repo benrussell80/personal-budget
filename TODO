@@ -1,0 +1,15 @@
+- [x] Create company pages
+- [x] Update recurring transaction
+    - [x] Store detail copies in new model
+- [ ] User Defined Attributes
+- [x] Update transaction totals when line is deleted
+- [x] Edit previous transaction
+- [ ] Automate Account Numbering?
+    - [ ] This would limit the allowed depth
+    - [ ] This would also standardize the numbering for asset, liability, and equity accounts (1, 2, 3)
+- [ ] JS: update transaction total when new detail line is added
+- [ ] Write a script that will
+    1. Start the server
+    2. Open a browser
+    3. Kill the server when finished
+    4. Backup the DB
