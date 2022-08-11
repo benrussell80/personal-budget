@@ -30,6 +30,7 @@ def create_quick_transaction(request: HttpRequest, company_pk: int) -> HttpRespo
     company = get_object_or_404(Company, pk=company_pk)
     if request.method == 'POST':
         form = CreateQuickTransaction(request.POST, company=company)
+        form.instance.company = company
         if form.is_valid():
             try:
                 instance: QuickTransaction = form.save(commit=False)
